@@ -1,0 +1,31 @@
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+DATABASE_URL = "postgresql://postgres:vijay0024@localhost:2004/SmartHire"
+
+print("DB CONNECTING TO:", DATABASE_URL)
+
+engine = create_engine(
+    DATABASE_URL,
+    echo=True  # shows SQL queries in terminal (good for debugging)
+)
+
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
+
+Base = declarative_base()
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

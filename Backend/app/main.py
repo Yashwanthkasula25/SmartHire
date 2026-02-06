@@ -1,8 +1,11 @@
 from fastapi import FastAPI
-from .routers import users , auth
+from .routers import users, auth
+from .db.database import engine, Base
+from app.models import *
 
-app = FastAPI(title="SmartHire API")
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
 
 app.include_router(users.router)
 app.include_router(auth.router)
-
