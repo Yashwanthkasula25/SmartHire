@@ -5,8 +5,7 @@ import os
 
 load_dotenv()
 
-DATABASE_URL = "postgresql://postgres:vijay0024@localhost:2004/SmartHire"
-
+DATABASE_URL = os.getenv("DATABASE_URL")
 print("DB CONNECTING TO:", DATABASE_URL)
 
 engine = create_engine(
