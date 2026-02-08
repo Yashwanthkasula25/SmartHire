@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routers import users, auth, profile
+from .routers import users, auth, profile, jobs, applications
 from .db.database import engine, Base
 
 # Import models so tables are registered
@@ -16,3 +16,5 @@ Base.metadata.create_all(bind=engine)
 app.include_router(users.router)
 app.include_router(auth.router)
 app.include_router(profile.router)
+app.include_router(jobs.router)
+app.include_router(applications.router)
