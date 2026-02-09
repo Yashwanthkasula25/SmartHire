@@ -3,28 +3,22 @@ from sqlalchemy.orm import Session
 
 from ..db.database import get_db
 from ..models.job import JobListing
+from ..models.user import User
 from ..schemas.job import JobCreate, JobResponse
-from ..core.auth import get_current_user
+from ..core.auth import require_recruiter, get_current_user
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
-# POST /jobs/ → Recruiter Creates Job
+
+# ✅ Recruiter Creates Job
 @router.post("/", response_model=JobResponse)
 def create_job(
     job_data: JobCreate,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(require_recruiter)
 ):
-
-    # ✅ Allow only recruiters
-    if current_user["role"].lower() != "recruiter":
-        raise HTTPException(
-            status_code=403,
-            detail="Only recruiters can create jobs"
-        )
-
     job = JobListing(
-        recruiter_id=current_user["id"],
+        recruiter_id=current_user.id,
         **job_data.model_dump()
     )
 
@@ -35,34 +29,24 @@ def create_job(
     return job
 
 
-# GET /jobs/ → List All Jobs
+# ✅ List All Jobs (Public)
 @router.get("/", response_model=list[JobResponse])
 def list_jobs(db: Session = Depends(get_db)):
     return db.query(JobListing).all()
 
 
-
-
-# GET /jobs/my — Recruiter’s Jobs
+# ✅ Recruiter’s Own Jobs
 @router.get("/my", response_model=list[JobResponse])
 def get_my_jobs(
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user: User = Depends(require_recruiter)
 ):
-    # ✅ Only recruiter allowed
-    if current_user["role"].lower() != "recruiter":
-        raise HTTPException(
-            status_code=403,
-            detail="Only recruiters can view their jobs"
-        )
-
-    jobs = db.query(JobListing).filter(
-        JobListing.recruiter_id == current_user["id"]
+    return db.query(JobListing).filter(
+        JobListing.recruiter_id == current_user.id
     ).all()
 
-    return jobs
 
-# GET /jobs/{id} → Job Details
+# ✅ Job Details
 @router.get("/{job_id}", response_model=JobResponse)
 def get_job(job_id: int, db: Session = Depends(get_db)):
     job = db.query(JobListing).filter(
@@ -70,6 +54,6 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
     ).first()
 
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(404, "Job not found")
 
     return job
