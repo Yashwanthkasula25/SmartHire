@@ -138,6 +138,7 @@ def upload_resume(
     if not application:
         raise HTTPException(404, "Application not found")
 
+    # ---------- SAVE FILE ----------
     upload_dir = "uploads/resumes"
     os.makedirs(upload_dir, exist_ok=True)
 
@@ -146,10 +147,12 @@ def upload_resume(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    # ---------- EXTRACT TEXT ----------
     resume_text = extract_text_from_pdf(file_path)
 
     job = application.job
 
+    # ---------- RESUME SCORING ----------
     tfidf_score = calculate_resume_score(
         resume_text,
         job.description or ""
@@ -164,33 +167,42 @@ def upload_resume(
 
     resume_final_score = int((0.4 * tfidf_score) + (0.6 * ai_score))
 
+    # ---------- SAVE RESUME DATA ----------
     application.resume_url = file_path
     application.resume_score = resume_final_score
     application.voice_score = None
     application.final_score = None
-    application.status = "resume_screened"
-    
 
-
-    # ---------- AUTO START BLAND INTERVIEW ----------
     candidate = application.user
-    job = application.job
 
-    print("REACHED BLAND SECTION")
-    print("PHONE:", candidate.phone)
+    print("RESUME SCORE:", resume_final_score)
 
-    try:
-        print("STARTING BLAND INTERVIEW FUNCTION")
+    # ============================================================
+    # ✅ RESUME SHORTLISTING LOGIC
+    # ============================================================
+    if job.resume_min_score and resume_final_score < job.resume_min_score:
 
-        start_bland_interview(
-            phone_number=candidate.phone,
-            candidate_name=candidate.name,
-            job_title=job.title
-        )
+        print("Resume rejected — below minimum score")
+        application.status = "rejected"
+
+    else:
+        print("Resume shortlisted — starting interview")
+
         application.status = "interview_in_progress"
-
-    except Exception as e:
-        print("Bland AI failed:", e)
+        candidate = application.user 
+        job = application.job 
+    #   START BLAND INTERVIEW
+        print("REACHED BLAND SECTION") 
+        print("PHONE:", candidate.phone)
+        try:
+            start_bland_interview(
+                phone_number=candidate.phone,
+                candidate_name=candidate.name,
+                job_title=job.title,
+                application_id=application.id
+            )
+        except Exception as e:
+            print("Bland AI failed:", e)
 
     db.commit()
 
@@ -199,6 +211,7 @@ def upload_resume(
         "resume_score": resume_final_score,
         "status": application.status
     }
+
 
 
 # ============================================================
@@ -288,61 +301,70 @@ def update_voice_score(
 # ============================================================
 # Bland AI Webhook (AUTOMATIC FLOW)
 # ============================================================
+
 BLAND_WEBHOOK_SECRET = os.getenv("BLAND_WEBHOOK_SECRET")
+
+
 @router.post("/bland-webhook")
 async def bland_webhook(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    secret = request.headers.get("X-Bland-Secret")
+    try:
+        data = await request.json()
+        print("BLAND WEBHOOK DATA:", data)
 
-    if secret != os.getenv("BLAND_WEBHOOK_SECRET"):
-        raise HTTPException(status_code=403, detail="Invalid webhook source")
+    except Exception:
+        body = await request.body()
+        print("Webhook received non-JSON body:", body)
+        return {"message": "Ignored non-JSON webhook"}
 
-    data = await request.json()
+    # ✅ Process only completed interviews
+    status = data.get("status")
+    if status != "completed":
+        return {"message": "Ignoring non-completed event"}
 
-    application_id = data.get("application_id")
-    transcript = data.get("transcript")
+    # ✅ Extract transcript
+    transcript = data.get("concatenated_transcript")
+
+    metadata = data.get("metadata", {})
+    application_id = metadata.get("application_id")
 
     if not application_id or not transcript:
-        raise HTTPException(400, "Invalid webhook data")
+        print("Invalid webhook payload")
+        return {"message": "Missing required fields"}
 
+    # ---------- FETCH APPLICATION ----------
     application = db.query(CandidateApplication).filter(
         CandidateApplication.id == application_id
     ).first()
 
     if not application:
-        raise HTTPException(404, "Application not found")
+        print("Application not found")
+        return {"message": "Application not found"}
 
-    if application.resume_score is None:
-        raise HTTPException(400, "Resume score missing")
-
+    # ---------- CALCULATE VOICE SCORE ----------
     result = calculate_voice_score(transcript)
 
-    voice_score = result["voice_score"]
-
+    application.voice_score = result["voice_score"]
     application.communication_score = result["communication_score"]
     application.technical_score = result["technical_score"]
     application.confidence_score = result["confidence_score"]
     application.interview_feedback = result["feedback"]
 
-    application.status = "interview_completed"
-
-    final_score = int(
-        (0.6 * application.resume_score) +
-        (0.4 * voice_score)
-    )
-
-    application.voice_score = voice_score
-    application.final_score = final_score
-
     job = application.job
 
-    if job.min_score_required and final_score >= job.min_score_required:
+    # ============================================================
+    # ✅ INTERVIEW SHORTLISTING LOGIC (NEW)
+    # ============================================================
+    if (
+        job.interview_min_score and
+        application.voice_score >= job.interview_min_score
+    ):
         application.status = "shortlisted"
     else:
         application.status = "rejected"
 
     db.commit()
 
-    return {"message": "Interview processed"}
+    return {"message": "Interview processed successfully"}

@@ -17,7 +17,9 @@ class JobListing(Base):
     mode = Column(String(20))
     experience_required = Column(Integer)
     status = Column(String(20), default="open")
-    min_score_required = Column(Integer)
+    resume_min_score = Column(Integer, default=40)
+    interview_min_score = Column(Integer, default=60)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     recruiter = relationship("User", backref="job_listings")
