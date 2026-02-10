@@ -23,3 +23,7 @@ class CandidateApplication(Base):
     job = relationship("JobListing", backref="applications")
 
 
+    interview_feedback = Column(Text, nullable=True)
+    communication_score = Column(Integer, nullable=True)
+    technical_score = Column(Integer, nullable=True)
+    confidence_score = Column(Integer, nullable=True)

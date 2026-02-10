@@ -1,56 +1,50 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from sqlalchemy.orm import Session
 import shutil
 import os
 
-
 from ..db.database import get_db
 from ..models.application import CandidateApplication
 from ..models.job import JobListing
-from ..models.user import User
-from ..schemas.application import ApplicationCreate, ApplicationResponse
+from ..schemas.application import (
+    ApplicationCreate,
+    ApplicationResponse,
+    UpdateApplicationStatus
+)
 from ..core.auth import get_current_user
 
 from ..core.resume_parser import extract_text_from_pdf
 from ..core.resume_scoring import calculate_resume_score
 from ..core.ai_resume_scoring import analyze_resume_with_ai
+from ..core.bland_ai import start_bland_interview
+from ..core.voice_scoring import calculate_voice_score
 
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
 
-
-# POST /applications → Candidate applies
+# ============================================================
+# Candidate Applies to Job
+# ============================================================
 @router.post("/", response_model=ApplicationResponse)
 def apply_job(
     data: ApplicationCreate,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    user_id = current_user["id"]
-    # check user exists
-    user = db.query(User).filter(User.id == user_id).first()
 
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    if current_user.role != "candidate":
+        raise HTTPException(403, "Only candidates can apply")
 
-    # allow only candidates
-    if user.role != "candidate":
-        raise HTTPException(
-            status_code=403,
-            detail="Only candidates can apply to jobs"
-        )
-
-    # check job exists
     job = db.query(JobListing).filter(
         JobListing.id == data.job_id
     ).first()
 
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(404, "Job not found")
 
     application = CandidateApplication(
-        user_id=user_id,
+        user_id=current_user.id,
         job_id=data.job_id,
         resume_url=data.resume_url
     )
@@ -61,39 +55,73 @@ def apply_job(
 
     return application
 
-# GET /applications/my → Candidate sees own applications
+
+# ============================================================
+# Candidate sees own applications
+# ============================================================
 @router.get("/my", response_model=list[ApplicationResponse])
 def my_applications(
     db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
     return db.query(CandidateApplication).filter(
-        CandidateApplication.user_id == user_id
+        CandidateApplication.user_id == current_user.id
     ).all()
 
 
-# Recruiter — See Applicants for Job
-@router.get("/job/{job_id}", response_model=list[ApplicationResponse])
+# ============================================================
+# Recruiter sees applicants for a job
+# ============================================================
+@router.get("/job/{job_id}")
 def job_applications(
     job_id: int,
     db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user)
+    current_user = Depends(get_current_user)
 ):
+
+    if current_user.role != "recruiter":
+        raise HTTPException(403, "Not allowed")
+
     job = db.query(JobListing).filter(
         JobListing.id == job_id,
-        JobListing.recruiter_id == user_id
+        JobListing.recruiter_id == current_user.id
     ).first()
 
     if not job:
-        raise HTTPException(status_code=403, detail="Not allowed")
+        raise HTTPException(404, "Job not found")
 
-    return db.query(CandidateApplication).filter(
-        CandidateApplication.job_id == job_id
-    ).all()
+    applications = (
+        db.query(CandidateApplication)
+        .filter(CandidateApplication.job_id == job_id)
+        .order_by(
+            CandidateApplication.final_score.desc().nullslast(),
+            CandidateApplication.resume_score.desc()
+        )
+        .all()
+    )
+
+    result = []
+    for app in applications:
+        result.append({
+            "application_id": app.id,
+            "candidate_name": app.user.name,
+            "resume_score": app.resume_score,
+            "voice_score": app.voice_score,
+            "final_score": app.final_score,
+            "status": app.status,
+            "communication_score": app.communication_score,
+            "technical_score": app.technical_score,
+            "confidence_score": app.confidence_score,
+            "interview_feedback": app.interview_feedback,
+            "applied_at": app.created_at
+        })
+
+    return result
 
 
-
-# upload_resume()
+# ============================================================
+# Upload Resume + Resume AI Scoring
+# ============================================================
 @router.post("/{application_id}/upload-resume")
 def upload_resume(
     application_id: int,
@@ -103,15 +131,13 @@ def upload_resume(
 ):
 
     application = db.query(CandidateApplication).filter(
-    CandidateApplication.id == application_id,
-    CandidateApplication.user_id == current_user["id"]
+        CandidateApplication.id == application_id,
+        CandidateApplication.user_id == current_user.id
     ).first()
 
-
     if not application:
-        raise HTTPException(status_code=404, detail="Application not found")
+        raise HTTPException(404, "Application not found")
 
-    # ---------- SAVE FILE ----------
     upload_dir = "uploads/resumes"
     os.makedirs(upload_dir, exist_ok=True)
 
@@ -120,21 +146,15 @@ def upload_resume(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # ---------- EXTRACT TEXT ----------
     resume_text = extract_text_from_pdf(file_path)
 
-    # ---------- GET JOB ----------
-    job = db.query(JobListing).filter(
-        JobListing.id == application.job_id
-    ).first()
+    job = application.job
 
-    # ---------- TF-IDF SCORE ----------
     tfidf_score = calculate_resume_score(
         resume_text,
         job.description or ""
     )
 
-    # ---------- AI SCORE ----------
     ai_result = analyze_resume_with_ai(
         resume_text=resume_text,
         job_description=job.description or ""
@@ -142,24 +162,187 @@ def upload_resume(
 
     ai_score = ai_result["score"]
 
-    # ---------- FINAL SCORE ----------
-    final_score = int((0.4 * tfidf_score) + (0.6 * ai_score))
-
-    # ---------- STATUS ----------
-    if job.min_score_required and final_score >= job.min_score_required:
-        application.status = "shortlisted"
-    else:
-        application.status = "rejected"
+    resume_final_score = int((0.4 * tfidf_score) + (0.6 * ai_score))
 
     application.resume_url = file_path
-    application.resume_score = final_score
+    application.resume_score = resume_final_score
+    application.voice_score = None
+    application.final_score = None
+    application.status = "resume_screened"
+    
+
+
+    # ---------- AUTO START BLAND INTERVIEW ----------
+    candidate = application.user
+    job = application.job
+
+    print("REACHED BLAND SECTION")
+    print("PHONE:", candidate.phone)
+
+    try:
+        print("STARTING BLAND INTERVIEW FUNCTION")
+
+        start_bland_interview(
+            phone_number=candidate.phone,
+            candidate_name=candidate.name,
+            job_title=job.title
+        )
+        application.status = "interview_in_progress"
+
+    except Exception as e:
+        print("Bland AI failed:", e)
 
     db.commit()
 
     return {
         "message": "Resume uploaded and analyzed",
-        "tfidf_score": tfidf_score,
-        "ai_score": ai_score,
-        "final_score": final_score,
+        "resume_score": resume_final_score,
         "status": application.status
     }
+
+
+# ============================================================
+# Recruiter updates application status manually
+# ============================================================
+@router.patch("/{application_id}/status")
+def update_application_status(
+    application_id: int,
+    data: UpdateApplicationStatus,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+
+    if current_user.role != "recruiter":
+        raise HTTPException(403, "Not allowed")
+
+    application = db.query(CandidateApplication).filter(
+        CandidateApplication.id == application_id
+    ).first()
+
+    if not application:
+        raise HTTPException(404, "Application not found")
+
+    if application.job.recruiter_id != current_user.id:
+        raise HTTPException(403, "Not allowed")
+
+    allowed_status = [
+        "applied",
+        "resume_screened",
+        "interview_in_progress",
+        "interview_completed",
+        "shortlisted",
+        "rejected",
+        "hired"
+    ]
+
+    if data.status not in allowed_status:
+        raise HTTPException(400, "Invalid status")
+
+    application.status = data.status
+    db.commit()
+
+    return {"message": "Status updated"}
+
+
+# ============================================================
+# Manual fallback voice score update
+# ============================================================
+@router.post("/{application_id}/voice-score")
+def update_voice_score(
+    application_id: int,
+    voice_score: int,
+    db: Session = Depends(get_db)
+):
+
+    application = db.query(CandidateApplication).filter(
+        CandidateApplication.id == application_id
+    ).first()
+
+    if not application:
+        raise HTTPException(404, "Application not found")
+
+    if application.resume_score is None:
+        raise HTTPException(400, "Resume score missing")
+
+    job = application.job
+
+    application.voice_score = voice_score
+
+    final_score = int(
+        (0.6 * application.resume_score) +
+        (0.4 * voice_score)
+    )
+
+    application.final_score = final_score
+
+    if job.min_score_required and final_score >= job.min_score_required:
+        application.status = "shortlisted"
+    else:
+        application.status = "rejected"
+
+    db.commit()
+
+    return {"final_score": final_score}
+
+
+# ============================================================
+# Bland AI Webhook (AUTOMATIC FLOW)
+# ============================================================
+BLAND_WEBHOOK_SECRET = os.getenv("BLAND_WEBHOOK_SECRET")
+@router.post("/bland-webhook")
+async def bland_webhook(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    secret = request.headers.get("X-Bland-Secret")
+
+    if secret != os.getenv("BLAND_WEBHOOK_SECRET"):
+        raise HTTPException(status_code=403, detail="Invalid webhook source")
+
+    data = await request.json()
+
+    application_id = data.get("application_id")
+    transcript = data.get("transcript")
+
+    if not application_id or not transcript:
+        raise HTTPException(400, "Invalid webhook data")
+
+    application = db.query(CandidateApplication).filter(
+        CandidateApplication.id == application_id
+    ).first()
+
+    if not application:
+        raise HTTPException(404, "Application not found")
+
+    if application.resume_score is None:
+        raise HTTPException(400, "Resume score missing")
+
+    result = calculate_voice_score(transcript)
+
+    voice_score = result["voice_score"]
+
+    application.communication_score = result["communication_score"]
+    application.technical_score = result["technical_score"]
+    application.confidence_score = result["confidence_score"]
+    application.interview_feedback = result["feedback"]
+
+    application.status = "interview_completed"
+
+    final_score = int(
+        (0.6 * application.resume_score) +
+        (0.4 * voice_score)
+    )
+
+    application.voice_score = voice_score
+    application.final_score = final_score
+
+    job = application.job
+
+    if job.min_score_required and final_score >= job.min_score_required:
+        application.status = "shortlisted"
+    else:
+        application.status = "rejected"
+
+    db.commit()
+
+    return {"message": "Interview processed"}

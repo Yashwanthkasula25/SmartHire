@@ -28,6 +28,14 @@ def login(
             detail="Invalid email or password"
         )
 
+    # ✅ Candidate validation for AI interview
+    if user.role == "candidate":
+        if not user.name or not user.phone:
+            raise HTTPException(
+                status_code=400,
+                detail="Please complete profile (name and phone required)"
+            )
+
     access_token = create_access_token(
         data={
             "sub": str(user.id),
