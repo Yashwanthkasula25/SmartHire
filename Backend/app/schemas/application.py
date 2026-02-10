@@ -14,7 +14,6 @@ class ApplicationResponse(BaseModel):
     resume_url: str | None
     resume_score: int | None
     voice_score: int | None
-    final_score: int | None
     status: str
     interview_completed: bool
     created_at: datetime

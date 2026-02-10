@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime , ForeignKey 
+from sqlalchemy import Boolean, Column, Integer, String, Text, DateTime , ForeignKey 
 from sqlalchemy.sql import func
 from ..db.database import Base
 from sqlalchemy.orm import relationship
@@ -14,9 +14,9 @@ class CandidateApplication(Base):
     resume_url = Column(Text)
     resume_score = Column(Integer)
     voice_score = Column(Integer)
-    final_score = Column(Integer)
+    # final_score = Column(Integer)
     status = Column(String(30), default="applied")
-    interview_completed = Column(Integer, default=False)
+    interview_completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", backref="applications")

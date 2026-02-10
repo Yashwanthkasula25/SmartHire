@@ -5,6 +5,7 @@ import os
 
 from ..db.database import get_db
 from ..models.application import CandidateApplication
+from ..models.interview import Interview
 from ..models.job import JobListing
 from ..schemas.application import (
     ApplicationCreate,
@@ -18,6 +19,7 @@ from ..core.resume_scoring import calculate_resume_score
 from ..core.ai_resume_scoring import analyze_resume_with_ai
 from ..core.bland_ai import start_bland_interview
 from ..core.voice_scoring import calculate_voice_score
+from ..core.interview_analysis import analyze_interview
 
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
@@ -94,25 +96,30 @@ def job_applications(
         db.query(CandidateApplication)
         .filter(CandidateApplication.job_id == job_id)
         .order_by(
-            CandidateApplication.final_score.desc().nullslast(),
+            CandidateApplication.status.desc(),
+            CandidateApplication.voice_score.desc().nullslast(),
             CandidateApplication.resume_score.desc()
         )
         .all()
     )
 
     result = []
+
     for app in applications:
         result.append({
             "application_id": app.id,
             "candidate_name": app.user.name,
+
             "resume_score": app.resume_score,
-            "voice_score": app.voice_score,
-            "final_score": app.final_score,
-            "status": app.status,
+            "interview_score": app.voice_score,
+
             "communication_score": app.communication_score,
             "technical_score": app.technical_score,
             "confidence_score": app.confidence_score,
-            "interview_feedback": app.interview_feedback,
+
+            "strengths_and_weakness": app.interview_feedback,
+
+            "status": app.status,
             "applied_at": app.created_at
         })
 
@@ -239,14 +246,11 @@ def update_application_status(
         raise HTTPException(403, "Not allowed")
 
     allowed_status = [
-        "applied",
-        "resume_screened",
-        "interview_in_progress",
-        "interview_completed",
-        "shortlisted",
-        "rejected",
-        "hired"
+    "shortlisted",
+    "rejected",
+    "hired"
     ]
+
 
     if data.status not in allowed_status:
         raise HTTPException(400, "Invalid status")
@@ -279,23 +283,24 @@ def update_voice_score(
 
     job = application.job
 
+    # ---------- SAVE VOICE SCORE ----------
     application.voice_score = voice_score
 
-    final_score = int(
-        (0.6 * application.resume_score) +
-        (0.4 * voice_score)
-    )
-
-    application.final_score = final_score
-
-    if job.min_score_required and final_score >= job.min_score_required:
+    # ---------- INTERVIEW DECISION ----------
+    if (
+        job.interview_min_score and
+        voice_score >= job.interview_min_score
+    ):
         application.status = "shortlisted"
     else:
         application.status = "rejected"
 
     db.commit()
 
-    return {"final_score": final_score}
+    return {
+        "voice_score": voice_score,
+        "status": application.status
+    }
 
 
 # ============================================================
@@ -343,6 +348,24 @@ async def bland_webhook(
         print("Application not found")
         return {"message": "Application not found"}
 
+    # ---------- SAVE INTERVIEW DATA ----------
+    interview = db.query(Interview).filter(
+        Interview.candidate_application_id == application.id
+    ).first()
+
+    if not interview:
+        interview = Interview(
+            candidate_application_id=application.id
+        )
+        db.add(interview)
+
+    interview.transcript = transcript
+    interview.duration = int(data.get("corrected_duration", 0))
+
+    interview.started_at = data.get("started_at")
+    interview.ended_at = data.get("end_at")
+
+
     # ---------- CALCULATE VOICE SCORE ----------
     result = calculate_voice_score(transcript)
 
@@ -353,6 +376,16 @@ async def bland_webhook(
     application.interview_feedback = result["feedback"]
 
     job = application.job
+
+    # ---------- INTERVIEW ANALYSIS ----------
+    analysis = analyze_interview(
+        transcript,
+        application.voice_score
+    )
+
+    interview.strengths = analysis["strengths"]
+    interview.weaknesses = analysis["weaknesses"]
+    interview.recommendation = analysis["recommendation"]
 
     # ============================================================
     # ✅ INTERVIEW SHORTLISTING LOGIC (NEW)

@@ -9,7 +9,10 @@ class JobCreate(BaseModel):
     location: str | None = None
     mode: str | None = None
     experience_required: int | None = None
-    min_score_required: int | None = None
+
+    resume_min_score: int | None = None
+    interview_min_score: int | None = None
+
 
 
 class JobResponse(BaseModel):
