@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SmartHire - Register</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>Create Account</h2>
+
+        <form id="registerForm">
+            <input type="text" id="name" placeholder="Full Name" required>
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+
+            <select id="role" required>
+                <option value="">Select Role</option>
+                <option value="candidate">Candidate</option>
+                <option value="recruiter">Recruiter</option>
+            </select>
+            <input type="text" id="phone" placeholder="Phone Number" required>
+
+
+            <button type="submit">Register</button>
+        </form>
+
+        <p class="link">
+            Already have an account? <a href="index.html">Login</a>
+        </p>
+    </div>
+</div>
+
+<script src="js/register.js"></script>
+
+</body>
+</html>
