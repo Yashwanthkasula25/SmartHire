@@ -1,5 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from .job import JobResponse
+
 
 
 class ApplicationCreate(BaseModel):
@@ -18,6 +20,7 @@ class ApplicationResponse(BaseModel):
     interview_completed: bool
     created_at: datetime
 
+    job: JobResponse
     model_config = ConfigDict(from_attributes=True)
 
 
