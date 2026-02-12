@@ -3,21 +3,14 @@ import os
 import json
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Initialize Gemini client
 client = genai.Client(
     api_key=os.getenv("GOOGLE_API_KEY")
 )
 
 
 def analyze_resume_with_ai(resume_text: str, job_description: str):
-    """
-    Uses Gemini AI to compare resume with job description
-    and return score + missing skills + explanation.
-    """
-
     prompt = f"""
     Compare the resume with the job description.
 
@@ -50,16 +43,12 @@ def analyze_resume_with_ai(resume_text: str, job_description: str):
         )
 
         result_text = response.text.strip()
-
-        # Convert AI response string -> JSON
         result_json = json.loads(result_text)
 
         return result_json
 
     except Exception as e:
         print("AI Resume Scoring Failed:", e)
-
-        # Fallback response (VERY IMPORTANT for production)
         return {
             "score": 60,
             "missing_skills": [],

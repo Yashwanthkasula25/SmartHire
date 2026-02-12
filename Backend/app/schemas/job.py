@@ -1,29 +1,30 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from typing import Optional
+
 
 class JobCreate(BaseModel):
     title: str
-    role: str | None = None
-    description: str | None = None
-    package: str | None = None
-    location: str | None = None
-    mode: str | None = None
-    experience_required: int | None = None
+    role: Optional[str] = None
+    description: Optional[str] = None
+    package: Optional[str] = None
+    location: Optional[str] = None
+    mode: Optional[str] = None
+    experience_required: Optional[int] = None
 
-    resume_min_score: int | None = None
-    interview_min_score: int | None = None
-
+    resume_min_score: Optional[int] = None
+    interview_min_score: Optional[int] = None
 
 
 class JobResponse(BaseModel):
     id: int
     title: str
-    role: str | None
-    description: str | None
-    package: str | None
-    location: str | None
-    mode: str | None
-    experience_required: int | None
+    role: Optional[str] = None
+    description: Optional[str] = None
+    package: Optional[str] = None
+    location: Optional[str] = None
+    mode: Optional[str] = None
+    experience_required: Optional[int] = None
     status: str
     created_at: datetime
 

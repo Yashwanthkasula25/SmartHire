@@ -3,9 +3,9 @@ from datetime import datetime
 from typing import Optional
 
 class UserCreate(BaseModel):
-    name: str | None = None
+    name: Optional[str] = None
     email: EmailStr
-    phone: str | None = None
+    phone: Optional[str] = None
     password: str
     role: str
 
