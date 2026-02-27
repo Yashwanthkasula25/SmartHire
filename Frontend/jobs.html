@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SmartHire - Jobs</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+
+<body>
+
+<!-- Authentication Check -->
+<script>
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+        window.location.href = "index.html";
+    }
+</script>
+
+<!-- Navbar -->
+<header class="navbar">
+    <h2>SmartHire</h2>
+    <div class="navbar-actions">
+        <a id="homeLink" class="nav-link-btn" href="dashboard.html">Home</a>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+</header>
+
+<!-- Jobs Section -->
+<div class="jobs-container">
+    <h2>Available Jobs</h2>
+    <input id="jobSearch" type="text" placeholder="Search by title, role, location, mode">
+    <div id="jobsContainer"></div>
+</div>
+
+<!-- Load Jobs -->
+<script src="js/jobs.js?v=20260221-100"></script>
+
+<!-- Logout Script -->
+<script>
+function logout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    window.location.href = "index.html";
+}
+</script>
+
+</body>
+</html>

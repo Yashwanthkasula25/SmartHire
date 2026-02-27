@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SmartHire - Dashboard</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+
+<body>
+
+<!-- Auth Check -->
+<script>
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+        window.location.href = "index.html";
+    }
+</script>
+
+<!-- Navbar -->
+<header class="navbar">
+    <h2>SmartHire</h2>
+    <div class="navbar-actions">
+        <a class="nav-link-btn" href="jobs.html">Browse Jobs</a>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+</header>
+
+<div class="dashboard-layout">
+    
+    <!-- LEFT PROFILE -->
+    <div class="profile-card">
+        <h3 id="profileName">User Name</h3>
+        <p id="profileEmail"></p>
+        <button onclick="showApplications()">Applications</button>
+        <button onclick="showProfile()">View Profile</button>
+        <button onclick="openProfile()">Update Profile</button>
+    </div>
+
+    <!-- MIDDLE MAIN CONTENT -->
+    <div class="main-content">
+
+        <!-- APPLICATION VIEW -->
+        <div id="applicationsView">
+            <h2>My Job Applications</h2>
+            <div id="applicationsContainer"></div>
+        </div>
+
+        <!-- PROFILE VIEW -->
+        <div id="profileView" style="display:none;">
+            <h2>My Profile</h2>
+
+            <p><b>Full Name:</b> <span id="viewFullName"></span></p>
+            <p><b>Email:</b> <span id="viewEmail"></span></p>
+            <p><b>Phone Number:</b> <span id="viewPhone"></span></p>
+            <p><b>Company:</b> <span id="viewCompany"></span></p>
+            <p><b>Experience:</b> <span id="viewExperience"></span></p>
+            <p><b>Skills:</b> <span id="viewSkills"></span></p>
+
+        </div>
+
+    </div>
+
+
+    <!-- RIGHT SIDE -->
+    <div class="right-column">
+        <div class="right-panel">
+            <h3>Application Insights</h3>
+            <p><b>Total Applications:</b> <span id="insightTotalApplications">0</span></p>
+            <p><b>Shortlisted:</b> <span id="insightShortlisted">0</span></p>
+            <p><b>Rejected:</b> <span id="insightRejected">0</span></p>
+            <p><b>Interview Scheduled:</b> <span id="insightInterviewScheduled">0</span></p>
+        </div>
+
+        <div class="update-panel">
+            <h3>SmartHire Update</h3>
+            <p>Our AI reviews every application.</p>
+            <p>If your resume is shortlisted, you will receive an automated interview call.</p>
+            <p><b>Make sure your phone number is active.</b></p>
+        </div>
+    </div>
+
+</div>
+
+<div id="profileModal" class="modal">
+    <div class="modal-content">
+
+        <h3>Update Profile</h3>
+
+        <form id="profileForm">
+
+            <input id="updateFullName" placeholder="Full Name">
+
+            <input id="updateCompany" placeholder="Company Name">
+
+            <select id="updateExperience">
+                <option value="">Select Experience</option>
+                <option value="fresher">Fresher</option>
+                <option value="1 to 3 years">1 to 3 years</option>
+                <option value="4 to 8 years">4 to 8 years</option>
+                <option value="9 and above">9 and above</option>
+            </select>
+
+            <input id="updateSkills" placeholder="Skills">
+
+            <button type="submit">Save</button>
+            <button type="button" onclick="closeProfile()">Cancel</button>
+
+        </form>
+
+    </div>
+</div>
+
+
+
+<script src="js/dashboard.js?v=20260221-3"></script>
+
+<script>
+function logout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    window.location.href = "index.html";
+}
+</script>
+
+</body>
+</html>
