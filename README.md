@@ -42,29 +42,6 @@ Database
 
 SQLAlchemy (ORM)
 Alembic (Migrations)
-
-
-📂 Project Structure
-SmartHire/
-│
-├── Backend/
-│   ├── app/
-│   │   ├── core/          # AI & business logic
-│   │   ├── db/            # Database config
-│   │   ├── models/        # Data models
-│   │   └── main.py        # Entry point
-│   │
-│   ├── alembic/           # DB migrations
-│   └── requirements.txt
-│
-├── Frontend/
-│   ├── css/
-│   ├── js/
-│   └── *.html
-│
-└── README.md
-
-
 ⚙️ Installation & Setup
 1. Clone Repository
 git clone https://github.com/Yashwanthkasula25/SmartHire.git
