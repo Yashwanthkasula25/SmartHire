@@ -15,82 +15,76 @@ Job posting and listing
 Candidate application tracking
 Recruiter dashboard
 🤖 AI-Based Modules
-Resume parsing (resume_parser.py)
-Resume scoring system (resume_scoring.py)
-AI interview evaluation (ai_interview_evaluator.py)
-AI resume scoring (ai_resume_scoring.py)
-Candidate ranking / blending (blend_ai.py)
+Resume parsing
+Resume scoring
+AI interview evaluation
+Candidate ranking / blending
 📊 Dashboards
 Admin dashboard
 Recruiter dashboard
 Candidate dashboard
 🔐 Security
-Authentication system (auth.py)
-Security utilities (security.py)
+Authentication system
+Security utilities
 🛠️ Tech Stack
+
 Frontend
-HTML
-CSS
-JavaScript
+
+HTML, CSS, JavaScript
+
 Backend
-Python (FastAPI / Flask-style structure)
+
+Python
+
 Database
-SQLAlchemy ORM
-Alembic for migrations
+
+SQLAlchemy (ORM)
+Alembic (Migrations)
 📂 Project Structure
 SmartHire/
 │
 ├── Backend/
 │   ├── app/
-│   │   ├── core/              # AI + business logic
-│   │   │   ├── resume_parser.py
-│   │   │   ├── ai_interview_evaluator.py
-│   │   │   ├── ai_resume_scoring.py
-│   │   │   ├── resume_scoring.py
-│   │   │   ├── blend_ai.py
-│   │   │   ├── auth.py
-│   │   │   ├── security.py
-│   │   │   └── scheduler.py
-│   │   │
-│   │   ├── db/                # Database configuration
-│   │   ├── models/            # Data models
-│   │   ├── main.py            # Entry point
+│   │   ├── core/          # AI & business logic
+│   │   ├── db/            # Database config
+│   │   ├── models/        # Data models
+│   │   ├── main.py        # Entry point
 │   │
-│   ├── alembic/               # Database migrations
+│   ├── alembic/           # DB migrations
 │   ├── requirements.txt
 │
 ├── Frontend/
 │   ├── css/
 │   ├── js/
-│   ├── *.html                # UI pages
+│   ├── *.html
 │
 └── README.md
 ⚙️ Installation & Setup
-1️⃣ Clone Repository
+1. Clone Repository
 git clone https://github.com/Yashwanthkasula25/SmartHire.git
 cd SmartHire
-2️⃣ Setup Backend
+2. Setup Backend
 cd Backend
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
-3️⃣ Run Server
+3. Run Server
 python app/main.py
-4️⃣ Open Frontend
+4. Open Frontend
 
-Open Frontend/index.html in browser
+Open Frontend/index.html in your browser
 
-🧠 Key Modules Explained
+🧠 Key Modules
 Resume Parser → Extracts candidate data from resumes
-AI Resume Scoring → Evaluates candidate profiles
+Resume Scoring → Evaluates candidate profiles
 Interview Evaluator → Assesses candidate performance
-Blend AI → Combines multiple scores for ranking
+Blend AI → Combines scores for ranking
 👨‍💻 Contributors
 Yashwanth Kasula
 Vijay Vardhan
 📌 Note
 
-This project demonstrates a combination of:
+This project demonstrates:
 
 Full-stack development
 Database management
