@@ -3,7 +3,7 @@
 
 SmartHire is a full-stack hiring platform designed to streamline the recruitment process by combining user management, job handling, and AI-driven candidate evaluation.
 
-The system enables recruiters to manage applicants while also leveraging intelligent modules like resume parsing and interview evaluation.
+The system enables recruiters to manage applicants while leveraging intelligent modules like resume parsing and interview evaluation.
 
 🎯 Features
 👤 User & Admin Management
@@ -30,7 +30,9 @@ Security utilities
 
 Frontend
 
-HTML, CSS, JavaScript
+HTML
+CSS
+JavaScript
 
 Backend
 
@@ -40,6 +42,8 @@ Database
 
 SQLAlchemy (ORM)
 Alembic (Migrations)
+
+
 📂 Project Structure
 SmartHire/
 │
@@ -48,17 +52,19 @@ SmartHire/
 │   │   ├── core/          # AI & business logic
 │   │   ├── db/            # Database config
 │   │   ├── models/        # Data models
-│   │   ├── main.py        # Entry point
+│   │   └── main.py        # Entry point
 │   │
 │   ├── alembic/           # DB migrations
-│   ├── requirements.txt
+│   └── requirements.txt
 │
 ├── Frontend/
 │   ├── css/
 │   ├── js/
-│   ├── *.html
+│   └── *.html
 │
 └── README.md
+
+
 ⚙️ Installation & Setup
 1. Clone Repository
 git clone https://github.com/Yashwanthkasula25/SmartHire.git
